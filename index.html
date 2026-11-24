@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Störfall im Schulnetz</title>
+<style>
+:root{
+  --ink:#2f3437; --ink2:#5b6366; --bg:#f3f1ec; --card:#ffffff; --line:#d6d2c9;
+  --petrol:#1f6f78; --petrol-d:#164f56; --petrol-l:#e3f0f1;
+  --ok:#2e7d4f; --ok-l:#e5f3ea; --err:#b3402f; --err-l:#f9e6e2; --warn:#b7791f;
+  --term:#1c2224; --term-ink:#d7e4e2;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Trebuchet MS",Tahoma,sans-serif;font-size:17px;line-height:1.45}
+header{background:var(--ink);color:#fff;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+header h1{font-family:Georgia,serif;font-weight:normal;font-size:20px;margin:0;flex:1;min-width:180px}
+header .pill{background:rgba(255,255,255,.12);border-radius:999px;padding:3px 12px;font-size:14px;white-space:nowrap}
+main{max-width:980px;margin:0 auto;padding:18px 16px 60px}
+h2{font-family:Georgia,serif;font-weight:normal;color:var(--petrol-d);font-size:26px;margin:4px 0 10px}
+h3{margin:0 0 8px;font-size:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.story{border-left:5px solid var(--petrol);background:var(--petrol-l)}
+.btn{font:inherit;border:0;border-radius:8px;padding:9px 18px;background:var(--petrol);color:#fff;cursor:pointer}
+.btn:hover{background:var(--petrol-d)}
+.btn.sec{background:#fff;color:var(--petrol-d);border:1px solid var(--petrol)}
+.btn:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.opt{display:block;width:100%;text-align:left;font:inherit;background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:6px 0;cursor:pointer;color:var(--ink)}
+.opt:hover{border-color:var(--petrol)}
+.opt.sel{border-color:var(--petrol);background:var(--petrol-l)}
+.opt.bad{border-color:var(--err);background:var(--err-l)}
+.opt.good{border-color:var(--ok);background:var(--ok-l)}
+.fb{border-radius:8px;padding:10px 14px;margin-top:12px}
+.fb.ok{background:var(--ok-l);border:1px solid var(--ok)}
+.fb.err{background:var(--err-l);border:1px solid var(--err)}
+.fb.hint{background:#fdf5e4;border:1px solid var(--warn)}
+.taskhead{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.tag{font-size:13px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+.stations{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.st{border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff}
+.st.done{border-color:var(--ok);background:var(--ok-l)}
+.st.now{border:2px solid var(--petrol)}
+.st.locked{opacity:.55}
+.st .n{font-family:Georgia,serif;font-size:30px;color:var(--petrol)}
+.letter{display:inline-flex;width:44px;height:52px;align-items:center;justify-content:center;border:2px dashed var(--line);border-radius:8px;font-family:Georgia,serif;font-size:30px;margin:2px;background:#fff}
+.letter.got{border:2px solid var(--petrol);color:var(--petrol-d)}
+input[type=text],input[type=number],select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+svg text{font-family:"Trebuchet MS",Tahoma,sans-serif}
+.node{cursor:pointer}
+.node rect,.node circle{transition:fill .15s}
+.terminal{background:var(--term);color:var(--term-ink);font-family:Consolas,"Courier New",monospace;font-size:15px;border-radius:8px;padding:12px;height:300px;overflow-y:auto;white-space:pre-wrap}
+.terminal .c{color:#ffd78a}
+.terminal .s-ok{color:#8fe3a8}
+.terminal .s-err{color:#ff9d8a}
+.terminal .sys{color:#7f9a97;font-style:italic}
+.termin{display:flex;gap:8px;margin-top:8px}
+.termin input{flex:1;font-family:Consolas,"Courier New",monospace}
+.grid2{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+@media (max-width:760px){.grid2{grid-template-columns:1fr}}
+table.proto{border-collapse:collapse;width:100%;font-size:14px}
+table.proto td,table.proto th{border:1px solid var(--line);padding:5px 7px;vertical-align:top;text-align:left}
+table.proto th{background:var(--petrol-l)}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:.92em}
+.dialog{font-family:Consolas,"Courier New",monospace;font-size:15px}
+.dline{padding:4px 8px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.dline:hover{border-color:var(--petrol)}
+.dline.bad{background:var(--err-l);border-color:var(--err)}
+.dline.good{background:var(--ok-l);border-color:var(--ok)}
+.pool{display:flex;flex-wrap:wrap;gap:8px}
+.chip{font:inherit;font-size:15px;border:1px solid var(--petrol);background:#fff;color:var(--petrol-d);border-radius:999px;padding:6px 12px;cursor:pointer}
+.chip.mono{font-family:Consolas,"Courier New",monospace;font-size:14px}
+.chip.sel{background:var(--petrol);color:#fff}
+.chip.bad{border-color:var(--err);background:var(--err-l);color:var(--err)}
+.chip.used{opacity:.3;cursor:default}
+.layer{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin:5px 0;min-height:46px;cursor:pointer;background:#fff;flex-wrap:wrap}
+.layer:hover{border-color:var(--petrol)}
+.layer .ln{width:150px;flex:none;font-weight:bold;color:var(--petrol-d)}
+@media (max-width:560px){.layer .ln{width:100%}}
+.shake{animation:shake .35s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.pkt{display:flex;flex-wrap:wrap;align-items:stretch;font-size:14px;margin:10px 0}
+.pkt div{padding:8px 8px;border:1px solid rgba(0,0,0,.15);display:flex;align-items:center}
+.small{font-size:14px;color:var(--ink2)}
+.cert{text-align:center}
+.cert .big{font-family:Georgia,serif;font-size:44px;letter-spacing:.2em;color:var(--petrol-d)}
+details summary{cursor:pointer;color:var(--petrol-d)}
+.progress{height:6px;background:rgba(255,255,255,.2);border-radius:3px;overflow:hidden;width:140px}
+.progress div{height:100%;background:#7fd0d6}
+</style>
+</head>
+<body>
+<header>
+  <h1>Störfall im Schulnetz</h1>
+  <span class="pill" id="hTeam"></span>
+  <span class="pill" id="hScore"></span>
+  <div class="progress" title="Fortschritt"><div id="hProg" style="width:0"></div></div>
+</header>
+<main id="app"></main>
+
+<script>
+"use strict";
+/* ================= Zustand ================= */
+const KEY = "stoerfall-schulnetz-v1";
+let S = load() || fresh();
+function fresh(){ return {team:"", start:null, idx:0, pts:{}, end:null, finished:false}; }
+function runCount(inc){ let n=0; try{ n=parseInt(localStorage.getItem(KEY+"-runs")||"0",10)||0; if(inc){ n++; localStorage.setItem(KEY+"-runs",String(n)); } }catch(e){} return n; }
+function code(team,pts,min){ const t=(team||"").trim().toLowerCase()+"|"+pts+"|"+min+"|NB-netz"; let h=5381; for(const c of t) h=((h*33)^c.charCodeAt(0))>>>0; const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let r=""; for(let i=0;i<5;i++){ r+=A[h%32]; h=Math.floor(h/32); } return r; }
+function load(){ try{ const t = localStorage.getItem(KEY); return t ? JSON.parse(t) : null; }catch(e){ return null; } }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+const app = document.getElementById("app");
+const $ = (h) => { const d = document.createElement("div"); d.innerHTML = h.trim(); return d.firstElementChild; };
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function shuffle(a){ a = a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function shakeEl(el){ el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); }
+
+/* ================= Stationen ================= */
+const STATIONS = [
+  {n:1, name:"Der Netzplan", topic:"Topologien und Ausfallsicherheit", letter:"P",
+   story:"Montag, 7:40 Uhr. In der halben Schule geht nichts mehr, und die Netzwerk-Administratorin ist krank. Ihr seid das Notfall-Team. Als Erstes braucht ihr einen Überblick: Wie ist das Schulnetz aufgebaut, und was passiert, wenn ein Gerät ausfällt?"},
+  {n:2, name:"Die Notfall-Pizza", topic:"Protokolle, Dialoge und Zustände", letter:"I",
+   story:"Die Reparatur wird dauern. Der Hausmeister spendiert Pizza für das Team. Der Pizzadienst nimmt Bestellungen nur noch digital an, über das Protokoll PIZZA. Ein Rechner kann nicht nachfragen oder raten: Jede Nachricht muss genau stimmen."},
+  {n:3, name:"Die Störungsmeldung", topic:"Client-Server, SMTP, Statuscodes", letter:"N",
+   story:"Jetzt muss die Schulleitung informiert werden. Das Mailprogramm (Client) schickt eure Störungsmeldung an den Mailserver der Schule. Prüft, ob alles angekommen ist."},
+  {n:4, name:"Der Weg durch die Schichten", topic:"OSI-Modell, Kapselung, TCP/IP", letter:"G",
+   story:"Fast geschafft. Bevor das Netz wieder freigegeben wird, wollt ihr verstehen, was mit einer Anfrage auf dem Weg durchs Netz passiert. Packt ein Datenpaket Schicht für Schicht und ordnet die Geräte und Protokolle richtig ein."}
+];
+
+/* ================= Aufgaben ================= */
+const TASKS = [];
+function T(station, title, max, render){ TASKS.push({id:"t"+TASKS.length, station, title, max, render}); }
+
+/* ---------- Station 1 ---------- */
+const NET = {
+  nodes:{
+    I:{x:300,y:28,l:"Internet",t:"cloud"},
+    R:{x:300,y:92,l:"R",t:"router"},
+    SV:{x:120,y:170,l:"Switch Verwaltung",t:"switch"},
+    SH:{x:440,y:170,l:"Hauptswitch",t:"switch"},
+    S:{x:60,y:262,l:"Server S",t:"server",click:true},
+    V1:{x:175,y:262,l:"V1",t:"pc",click:true},
+    S1:{x:350,y:262,l:"Switch Etage 1",t:"switch"},
+    S2:{x:530,y:262,l:"Switch Etage 2",t:"switch"},
+    L1:{x:310,y:350,l:"L1",t:"pc",click:true},
+    L2:{x:390,y:350,l:"L2",t:"pc",click:true},
+    L3:{x:490,y:350,l:"L3",t:"pc",click:true},
+    L4:{x:570,y:350,l:"L4",t:"pc",click:true}
+  },
+  edges:[["I","R"],["R","SV"],["R","SH"],["SV","S"],["SV","V1"],["SH","S1"],["SH","S2"],["S1","L1"],["S1","L2"],["S2","L3"],["S2","L4"]]
+};
+function netSVG(opts={}){
+  const N = NET.nodes; const failed = opts.failed || null; const extra = opts.extraEdge || null;
+  let s = `<svg viewBox="0 0 620 390" style="width:100%;max-width:620px;display:block;margin:0 auto" role="img" aria-label="Netzplan der Schule">`;
+  const edges = NET.edges.slice(); if(extra) edges.push(extra);
+  edges.forEach(([a,b],i)=>{ const A=N[a],B=N[b]; const ex = extra && i===edges.length-1;
+    s += `<line x1="${A.x}" y1="${A.y}" x2="${B.x}" y2="${B.y}" stroke="${ex?'#2e7d4f':'#7d8689'}" stroke-width="${ex?4:2.5}" ${ex?'stroke-dasharray="8 5"':''}/>`; });
+  for(const k in N){ const n=N[k]; const isF = failed===k;
+    const col = isF ? "#b3402f" : ({cloud:"#ffffff",router:"#1f6f78",switch:"#3d4a4e",server:"#8a5a1f",pc:"#ffffff"})[n.t];
+    s += `<g class="${n.click?'node':''}" data-id="${k}">`;
+    if(n.t==="cloud") s += `<ellipse cx="${n.x}" cy="${n.y}" rx="50" ry="20" fill="#fff" stroke="#7d8689" stroke-width="2"/><text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="14" fill="#2f3437">Internet</text>`;
+    else if(n.t==="router") s += `<circle cx="${n.x}" cy="${n.y}" r="20" fill="${col}"/><text x="${n.x}" y="${n.y+6}" text-anchor="middle" font-size="17" fill="#fff" font-weight="bold">R</text>`;
+    else if(n.t==="switch"){ s += `<rect x="${n.x-34}" y="${n.y-13}" width="68" height="26" rx="5" fill="${col}"/><text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="12" fill="#fff">Switch</text>`;
+      s += `<text x="${n.x}" y="${n.y-19}" text-anchor="middle" font-size="12" fill="#5b6366">${n.l}</text>`;
+      if(isF) s += `<text x="${n.x+40}" y="${n.y+5}" text-anchor="start" font-size="13" fill="#b3402f" font-weight="bold">AUSGEFALLEN</text>`; }
+    else if(n.t==="server") s += `<rect class="body" x="${n.x-22}" y="${n.y-20}" width="44" height="40" rx="4" fill="${col}" stroke="#5b3a10" stroke-width="2"/><text x="${n.x}" y="${n.y+6}" text-anchor="middle" font-size="16" fill="#fff" font-weight="bold">S</text><text x="${n.x}" y="${n.y+36}" text-anchor="middle" font-size="12" fill="#5b6366">Schulserver</text>`;
+    else s += `<rect class="body" x="${n.x-22}" y="${n.y-16}" width="44" height="32" rx="4" fill="#fff" stroke="#3d4a4e" stroke-width="2"/><text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="14" fill="#2f3437">${n.l}</text>`;
+    s += `</g>`; }
+  return s + `</svg>`;
+}
+
+T(1,"Welche Topologie?",3,(box,api)=>{
+  box.append($(`<div><p>Das ist der Netzplan der Schule. V1 ist der Rechner im Sekretariat, L1 bis L4 stehen in den Computerräumen.</p>${netSVG()}<p><b>Welche Topologie hat das Schulnetz?</b></p></div>`));
+  mc(box,api,["Bus","Ring","Stern mit einem zentralen Switch","Baum (erweiterter Stern)","vollvermascht"],3,
+   "Richtig: Mehrere Sterne (je ein Switch mit seinen Geräten) sind hierarchisch über weitere Switches und den Router verbunden. Das ist ein Baum bzw. erweiterter Stern, typisch für Gebäude mit Etagen.",
+   "Achtet auf die Hierarchie: Es gibt nicht nur einen Mittelpunkt, sondern mehrere Switches auf verschiedenen Ebenen.");
+});
+
+T(1,"Topologien erkennen",4,(box,api)=>{
+  box.append($(`<div><p>Im Keller findet ihr alte Notizen der Administratorin. <b>Welche Topologie ist jeweils gemeint?</b></p></div>`));
+  sel(box,api,[
+    ["„Ein Defekt am Hauptkabel legt alle Rechner lahm.“","Bus"],
+    ["„Die Daten werden von Nachbar zu Nachbar weitergereicht.“","Ring"],
+    ["„Fällt der zentrale Switch aus, steht alles.“","Stern"],
+    ["„Sehr ausfallsicher, aber n(n−1)/2 Leitungen.“","vollvermascht"],
+    ["„Die Etagen-Switches hängen an einem Hauptswitch.“","Baum (erweiterter Stern)"]
+  ],"Alles richtig. Beim Bus teilen sich alle ein Medium, beim Ring hängt jeder an zwei Nachbarn, beim Stern ist der Switch der Single Point of Failure, vollvermascht bietet viele Umwege, der Baum verbindet mehrere Sterne hierarchisch.", "wide");
+});
+
+T(1,"Ausfall beurteilen",3,(box,api)=>{
+  box.append($(`<div><p><b>Der Hauptswitch fällt aus.</b> Klickt alle Endgeräte an, die den Schulserver S <u>nicht mehr</u> erreichen. Dann auf „Prüfen“.</p><div id="svgw">${netSVG({failed:"SH"})}</div></div>`));
+  const sel = new Set(); const right = new Set(["L1","L2","L3","L4"]);
+  box.querySelectorAll(".node").forEach(g=>{ const id=g.dataset.id; if(id==="S") { g.classList.remove("node"); return; }
+    g.addEventListener("click",()=>{ if(api.done) return; sel.has(id)?sel.delete(id):sel.add(id);
+      g.querySelector(".body").setAttribute("fill", sel.has(id)?"#f3c7bd":"#fff"); }); });
+  const b = $(`<div class="row" style="margin-top:8px"><button class="btn">Prüfen</button><span class="small" id="selinfo"></span></div>`); box.append(b);
+  b.querySelector("button").onclick=()=>{
+    const ok = sel.size===right.size && [...right].every(x=>sel.has(x));
+    if(ok) api.solve("Genau. L1 bis L4 hängen nur über den Hauptswitch am restlichen Netz. Sie erreichen weder den Server noch das Internet. V1 ist nicht betroffen, weil der Switch Verwaltung direkt am Router hängt. Der Hauptswitch ist ein <i>Single Point of Failure</i> für beide Etagen.");
+    else if([...sel].includes("V1")) api.wrong("V1 hängt am Switch Verwaltung. Verfolgt den Weg von V1 zum Server S: Kommt der Hauptswitch darauf vor?");
+    else api.wrong("Noch nicht vollständig. Verfolgt für jedes Gerät den Weg zum Server S. Führt er über den ausgefallenen Switch?");
+  };
+});
+
+T(1,"Leitungen zählen",3,(box,api)=>{
+  box.append($(`<div><p>Ein Kollege schlägt vor: „Dann verbinden wir die <b>12 Rechner im Lehrerzimmer</b> einfach jeder mit jedem. Dann kann nie wieder etwas ausfallen!“</p><p><b>Wie viele Leitungen bräuchte man für ein vollvermaschtes Netz mit 12 Rechnern?</b></p></div>`));
+  numIn(box,api,66,"Richtig: n·(n−1)/2 = 12·11/2 = 66 Leitungen. Jeder der 12 Rechner braucht 11 Leitungen, dabei wird jede Leitung doppelt gezählt. Die Zahl wächst quadratisch, deshalb ist Vollvermaschung schnell zu teuer.",
+   v=> v===132 ? "Fast: 12·11 = 132 zählt jede Leitung doppelt (einmal von jedem Ende aus)." : "Überlegt: Jeder Rechner braucht eine Leitung zu jedem anderen. Wird dabei eine Leitung doppelt gezählt?");
+});
+
+T(1,"Ausfallsicherheit verbessern",3,(box,api)=>{
+  box.append($(`<div><p><b>Welche Maßnahme sorgt dafür, dass die Etagen 1 und 2 bei einem Ausfall des Hauptswitches den Server S weiterhin erreichen?</b></p></div>`));
+  mc(box,api,[
+    "Schnellere Kabel zwischen Hauptswitch und Etagen-Switches verlegen",
+    "Die Etagen-Switches zusätzlich direkt mit dem Switch Verwaltung verbinden (Teilvermaschung)",
+    "In jeder Etage die Rechner als Ring statt als Stern anschließen",
+    "Einen zweiten Server S2 an den Hauptswitch anschließen"],1,
+   "Richtig: Zusätzliche Leitungen schaffen einen zweiten Weg (Redundanz). Fällt der Hauptswitch aus, laufen die Daten über den Umweg. So ist auch das Internet aufgebaut: teilvermascht.",
+   "Gesucht ist ein zweiter Weg, der nicht über den Hauptswitch führt.",
+   ()=>{ const w=document.createElement("div"); w.innerHTML = netSVG({failed:"SH", extraEdge:["S1","SV"]}) + `<p class="small" style="text-align:center">Grün gestrichelt: neue Leitung als Umweg (für Etage 2 entsprechend).</p>`; return w; });
+});
+
+/* ---------- Station 2 ---------- */
+const MENU = {margherita:["Margherita",8.5], salami:["Salami",9.5], funghi:["Funghi",9.0], tonno:["Tonno",10.0]};
+const AREA = ["altstadt","nordviertel","suedstadt"];
+const PROTO_TABLE = `<table class="proto"><tr><th>Client sendet</th><th>Server antwortet</th></tr>
+<tr><td class="mono">NAME &lt;name&gt;</td><td class="mono">+OK Hallo &lt;name&gt;</td></tr>
+<tr><td class="mono">ADRESSE &lt;strasse&gt; &lt;ort&gt;</td><td class="mono">+OK Lieferung moeglich<br>-ERR kein Liefergebiet</td></tr>
+<tr><td class="mono">BESTELLE &lt;anzahl&gt; &lt;pizza&gt;</td><td class="mono">+OK &lt;anzahl&gt; &lt;pizza&gt; notiert<br>-ERR &lt;pizza&gt; unbekannt</td></tr>
+<tr><td class="mono">FERTIG</td><td class="mono">+OK Summe &lt;betrag&gt; Euro<br>-ERR keine Bestellung</td></tr>
+<tr><td class="mono">TSCHUESS</td><td class="mono">+BYE (Verbindung wird getrennt)</td></tr></table>
+<p class="small">Reihenfolge: ADRESSE erst nach NAME, BESTELLE erst nach gültiger Adresse.<br>
+Karte: Margherita 8,50 · Salami 9,50 · Funghi 9,00 · Tonno 10,00 Euro<br>Liefergebiet: Altstadt, Nordviertel, Suedstadt</p>`;
+const euro = v => v.toFixed(2).replace(".",",");
+
+T(2,"Bestellung über das Protokoll PIZZA",4,(box,api)=>{
+  box.append($(`<div class="grid2">
+    <div>
+      <div class="fb hint" style="margin:0 0 10px"><b>Auftrag:</b> Bestellt unter eurem Teamnamen <b>3 Salami</b> und <b>1 Tonno</b> an die Adresse <b class="mono">Schulweg1 Suedstadt</b>. Lasst euch die Summe nennen und beendet die Verbindung ordnungsgemäß.</div>
+      <div class="terminal" id="term" aria-live="polite"></div>
+      <form class="termin" id="tform"><input type="text" id="tin" autocomplete="off" spellcheck="false" placeholder="Befehl eingeben, z. B. NAME …" aria-label="Befehl an den Server"><button class="btn">Senden</button></form>
+      <div class="row" style="margin-top:8px"><button class="btn sec" id="reconn" type="button">Neue Verbindung</button></div>
+    </div>
+    <div><h3>Protokoll PIZZA</h3>${PROTO_TABLE}</div></div>`));
+  const term = box.querySelector("#term"), tin = box.querySelector("#tin");
+  let st, name, order, ort, failedConn = 0;
+  const out = (cls, txt) => { const d=document.createElement("div"); d.className=cls; d.textContent=txt; term.append(d); term.scrollTop=term.scrollHeight; };
+  function connect(){ st="bereit"; name=""; order={}; ort=""; term.innerHTML=""; out("sys","Verbindung zu pizza.example:4242 aufgebaut."); out("s-ok","S: +OK Pizzadienst bereit"); tin.disabled=false; tin.focus(); }
+  function reply(t){ out(t.startsWith("-")?"s-err":"s-ok","S: "+t); }
+  connect();
+  box.querySelector("#reconn").onclick = connect;
+  box.querySelector("#tform").onsubmit = (e)=>{
+    e.preventDefault(); let line = tin.value.trim(); tin.value=""; if(!line || st==="closed") return;
+    line = line.replace(/^C:\s*/i,""); out("c","C: "+line);
+    const parts = line.split(/\s+/); const cmd = parts[0].toUpperCase(); const args = parts.slice(1);
+    if(cmd==="NAME"){
+      if(st!=="bereit") return reply("-ERR Name bereits angegeben");
+      if(!args.length) return reply("-ERR Format: NAME <name>");
+      name = args.join(" "); st="kunde"; return reply("+OK Hallo "+name);
+    }
+    if(cmd==="ADRESSE"){
+      if(st==="bereit") return reply("-ERR erst NAME angeben");
+      if(st!=="kunde") return reply("-ERR Adresse bereits angegeben");
+      if(args.length<2) return reply("-ERR Format: ADRESSE <strasse> <ort>");
+      const o = args[args.length-1].toLowerCase().replace(/ü/g,"ue");
+      if(!AREA.includes(o)) return reply("-ERR kein Liefergebiet");
+      ort=o; st="adresse"; return reply("+OK Lieferung moeglich");
+    }
+    if(cmd==="BESTELLE"){
+      if(st==="bereit") return reply("-ERR erst NAME angeben");
+      if(st==="kunde") return reply("-ERR erst ADRESSE angeben");
+      if(st==="fertig") return reply("-ERR Bestellung bereits abgeschlossen");
+      const n = parseInt(args[0],10);
+      if(args.length!==2 || !(n>0) || String(n)!==args[0]) return reply("-ERR Format: BESTELLE <anzahl> <pizza>");
+      const p = MENU[args[1].toLowerCase()];
+      if(!p) return reply("-ERR "+args[1]+" unbekannt");
+      order[p[0]] = (order[p[0]]||0)+n; st="offen"; return reply("+OK "+n+" "+p[0]+" notiert");
+    }
+    if(cmd==="FERTIG"){
+      if(st==="bereit") return reply("-ERR erst NAME angeben");
+      if(st==="kunde") return reply("-ERR erst ADRESSE angeben");
+      if(st==="adresse") return reply("-ERR keine Bestellung");
+      if(st==="fertig") return reply("-ERR Bestellung bereits abgeschlossen");
+      let sum=0; for(const k in order){ const p=Object.values(MENU).find(m=>m[0]===k); sum+=p[1]*order[k]; }
+      st="fertig"; return reply("+OK Summe "+euro(sum)+" Euro");
+    }
+    if(cmd==="TSCHUESS"){
+      const was = st; reply("+BYE"); out("sys","Verbindung getrennt."); st="closed"; tin.disabled=true;
+      const keys = Object.keys(order).sort().join(",");
+      const okOrder = keys==="Salami,Tonno" && order.Salami===3 && order.Tonno===1;
+      if(was==="fertig" && okOrder && ort==="suedstadt"){
+        api.solve(`Bestellung angekommen: 3 · 9,50 + 10,00 = <b>38,50 Euro</b>. Euer Dialog hat das Protokoll eingehalten: Format (feste Befehle mit Parametern), Reihenfolge (NAME → ADRESSE → BESTELLE → FERTIG) und Bedeutung (+OK/-ERR). Nach einem -ERR hat sich beim Server übrigens nichts geändert.`);
+      } else {
+        failedConn++; api.penalty();
+        let why = was!=="fertig" ? "Die Verbindung wurde beendet, bevor die Bestellung mit FERTIG abgeschlossen war."
+          : !okOrder ? "Die bestellten Pizzen passen nicht zum Auftrag (3 Salami, 1 Tonno)."
+          : "Die Lieferadresse stimmt nicht (Schulweg1 Suedstadt).";
+        api.note(`<div class="fb err">${why} Klickt auf „Neue Verbindung“ und versucht es noch einmal.</div>`);
+      }
+      return;
+    }
+    return reply("-ERR unbekannter Befehl");
+  };
+});
+
+T(2,"Wo steht der Server?",3,(box,api)=>{
+  box.append($(`<div><p>Der Pizza-Server merkt sich, wie weit das Gespräch ist. Sein Verhalten lässt sich als Zustandsdiagramm modellieren (wie ein Automat).</p>
+  <div class="dialog card" style="background:#fafaf7">S: +OK Pizzadienst bereit<br>C: NAME Mia Roth<br>S: +OK Hallo Mia Roth<br>C: ADRESSE Lindenweg7 Altstadt<br>S: +OK Lieferung moeglich</div>
+  <p><b>In welchem Zustand ist der Server jetzt, und was antwortet er, wenn der Client als Nächstes <span class="mono">FERTIG</span> sendet?</b></p></div>`));
+  mc(box,api,[
+    "Zustand „Bestellung offen“, Antwort: +OK Summe 0,00 Euro",
+    "Zustand „Adresse bekannt“, Antwort: -ERR keine Bestellung",
+    "Zustand „Kunde bekannt“, Antwort: -ERR erst ADRESSE angeben",
+    "Zustand „abgeschlossen“, Antwort: +BYE"],1,
+   "Richtig: Nach der gültigen Adresse ist der Server im Zustand „Adresse bekannt“. FERTIG ist dort ein Fehler (-ERR keine Bestellung) und führt zu keinem Zustandswechsel. Im Zustandsdiagramm wäre das eine Schleife: <span class='mono'>FERTIG / -ERR</span>.",
+   "Die Adresse wurde mit +OK bestätigt, aber bestellt wurde noch nichts.");
+});
+
+T(2,"Zustandsdiagramm ergänzen",4,(box,api)=>{
+  box.append($(`<div><p>Die Administratorin hat das Zustandsdiagramm des Pizza-Servers angefangen. <b>Ergänzt für jeden Übergang den Folgezustand.</b> (Eingabe / Ausgabe wie beim Automaten.)</p>
+  <p class="small">Zustände: bereit · Kunde bekannt · Adresse bekannt · Bestellung offen · abgeschlossen · beendet</p></div>`));
+  sel(box,api,[
+    ["bereit — NAME / +OK","Kunde bekannt"],
+    ["Kunde bekannt — ADRESSE ok / +OK","Adresse bekannt"],
+    ["Kunde bekannt — ADRESSE fern / -ERR","bleibt in „Kunde bekannt“"],
+    ["Adresse bekannt — BESTELLE ok / +OK","Bestellung offen"],
+    ["Bestellung offen — BESTELLE / +OK","bleibt in „Bestellung offen“"],
+    ["Bestellung offen — FERTIG / +OK Summe","abgeschlossen"],
+    ["abgeschlossen — TSCHUESS / +BYE","beendet"]
+  ],"Richtig! Ein -ERR führt nie zu einem Zustandswechsel, im Diagramm ist das eine Schleife am selben Zustand. Weitere Bestellungen bleiben in „Bestellung offen“. Nicht eingezeichnet: TSCHUESS ist in jedem Zustand erlaubt.", "wide");
+});
+
+T(2,"Fehlersuche im Dialog",3,(box,api)=>{
+  box.append($(`<div><p>Ein Praktikant hat einen eigenen Pizza-Server programmiert. Im Mitschnitt verhält sich der Server an <b>einer</b> Stelle nicht nach dem Protokoll PIZZA. <b>Klickt die fehlerhafte Zeile an.</b></p></div>`));
+  const lines = ["S: +OK Pizzadienst bereit","C: NAME Tim Berg","S: +OK Hallo Tim Berg","C: BESTELLE 1 Salami","S: +OK 1 Salami notiert","C: ADRESSE Marktplatz3 Nordviertel","S: +OK Lieferung moeglich","C: FERTIG","S: +OK Summe 9,50 Euro","C: TSCHUESS","S: +BYE"];
+  const d = $(`<div class="dialog card" style="background:#fafaf7"></div>`);
+  lines.forEach((l,i)=>{ const e=$(`<div class="dline">${esc(l)}</div>`); e.onclick=()=>{ if(api.done) return;
+    if(i===4){ e.classList.add("good"); api.solve("Genau: BESTELLE ist erst nach einer gültigen Adresse erlaubt. Der Server hätte <span class='mono'>-ERR erst ADRESSE angeben</span> senden müssen und im Zustand „Kunde bekannt“ bleiben."); }
+    else { e.classList.add("bad"); setTimeout(()=>e.classList.remove("bad"),900);
+      api.wrong(i===3 ? "Der Client darf alles senden, was er will. Die Frage ist, wie der <i>Server</i> darauf reagiert." : "Diese Zeile passt zum Protokoll. Prüft die Reihenfolge: Was darf erst nach was kommen?"); } };
+    d.append(e); });
+  box.append(d);
+});
+
+/* ---------- Station 3 ---------- */
+T(3,"Sequenzdiagramm bauen",4,(box,api)=>{
+  const seq = [
+    ["S","220 mail.schule.de ESMTP ready"],["C","HELO pc-notfall.schule.de"],["S","250 Hello pc-notfall.schule.de"],
+    ["C","MAIL FROM:<notfall@schule.de>"],["S","250 OK"],["C","RCPT TO:<schulleitung@schule.de>"],["S","250 OK"],
+    ["C","DATA"],["S","354 End data with <CR><LF>.<CR><LF>"],["C","QUIT"],["S","221 Bye"]];
+  box.append($(`<div><p>Der Mail-Client hat die Nachrichten durcheinandergebracht. Klickt die Nachrichten <b>in der richtigen Reihenfolge</b> an. Das Sequenzdiagramm entsteht dabei von oben nach unten. (Den eigentlichen Mailtext nach DATA lassen wir weg.)</p></div>`));
+  const pool = $(`<div class="pool"></div>`); box.append(pool);
+  const W=620, rowH=34, top=50;
+  const svgWrap = $(`<div style="margin-top:12px"></div>`); box.append(svgWrap);
+  let pos = 0; const drawn = [];
+  function draw(){
+    const H = top + Math.max(seq.length,1)*rowH + 20; const xc=110, xs=W-110;
+    let s = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;display:block;margin:0 auto">
+      <defs><marker id="ah" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1f6f78"/></marker></defs>
+      <rect x="${xc-55}" y="6" width="110" height="28" rx="4" fill="#3d4a4e"/><text x="${xc}" y="25" text-anchor="middle" fill="#fff" font-size="14">Client</text>
+      <rect x="${xs-55}" y="6" width="110" height="28" rx="4" fill="#3d4a4e"/><text x="${xs}" y="25" text-anchor="middle" fill="#fff" font-size="14">Mailserver</text>
+      <line x1="${xc}" y1="34" x2="${xc}" y2="${H-6}" stroke="#7d8689" stroke-dasharray="5 4"/><line x1="${xs}" y1="34" x2="${xs}" y2="${H-6}" stroke="#7d8689" stroke-dasharray="5 4"/>`;
+    drawn.forEach(([who,txt],i)=>{ const y = top + i*rowH + 14; const x1 = who==="C"?xc:xs, x2 = who==="C"?xs:xc;
+      s += `<line x1="${x1}" y1="${y}" x2="${x2}" y2="${y}" stroke="#1f6f78" stroke-width="2" marker-end="url(#ah)"/>
+            <text x="${W/2}" y="${y-5}" text-anchor="middle" font-size="12.5" font-family="Consolas,Courier New,monospace" fill="#2f3437">${esc(txt)}</text>`; });
+    svgWrap.innerHTML = s + `</svg>`;
+  }
+  draw();
+  shuffle(seq.map((m,i)=>i)).forEach(i=>{ const [who,txt]=seq[i];
+    const c=$(`<button class="chip mono">${esc(txt)}</button>`);
+    c.onclick=()=>{ if(api.done || c.classList.contains("used")) return;
+      if(seq[pos][1]===txt){ c.classList.add("used"); drawn.push(seq[pos]); pos++; draw();
+        if(pos===seq.length) api.solve("Richtig! Der Server meldet sich zuerst (220), danach wechseln sich Anfrage des Clients und Antwort des Servers immer ab. Codes 2xx bedeuten Erfolg, 354 heißt „weiter, ich erwarte den Text“, 221 beendet die Verbindung.");
+      } else { shakeEl(c); api.wrong(pos===0 ? "Wer sagt beim Verbindungsaufbau zuerst etwas: der Client oder der Server?" : "Passt nicht an diese Stelle. Tipp: Auf jede Client-Nachricht folgt genau eine Antwort des Servers.", true); } };
+    pool.append(c); });
+});
+
+T(3,"Wer bekommt die Mail?",3,(box,api)=>{
+  box.append($(`<div><p>Die Störungsmeldung soll an mehrere Personen gehen. Hier ist der Mitschnitt:</p>
+  <div class="dialog card" style="background:#fafaf7">S: 220 mail.schule.de ESMTP ready<br>C: HELO pc-notfall.schule.de<br>S: 250 Hello pc-notfall.schule.de<br>C: MAIL FROM:&lt;notfall@schule.de&gt;<br>S: 250 OK<br>C: RCPT TO:&lt;schulleitung@schule.de&gt;<br>S: 250 OK<br>C: RCPT TO:&lt;hausmeister@schule.dee&gt;<br>S: 550 No such domain<br>C: RCPT TO:&lt;it-support@stadt.example&gt;<br>S: 250 OK<br>C: DATA<br>S: 354 End data with &lt;CR&gt;&lt;LF&gt;.&lt;CR&gt;&lt;LF&gt;<br>C: Subject: Netzstoerung …<br>C: .<br>S: 250 OK: queued as 815<br>C: QUIT<br>S: 221 Bye</div>
+  <p><b>An wen wird die Mail tatsächlich zugestellt?</b> Wählt alle passenden aus.</p></div>`));
+  multi(box,api,["schulleitung@schule.de","hausmeister@schule.dee","it-support@stadt.example","notfall@schule.de"],[0,2],
+   "Richtig: Zugestellt wird an alle Empfänger, die der Server mit 250 bestätigt hat. Die Adresse des Hausmeisters hat einen Tippfehler in der Domain (.dee), der Server lehnt sie mit 550 ab. notfall@schule.de ist der Absender (MAIL FROM), kein Empfänger.",
+   "Achtet auf die Antwort des Servers direkt nach jedem RCPT TO.");
+});
+
+T(3,"Statuscodes und Ports",4,(box,api)=>{
+  box.append($(`<div><p><b>Ordnet zu.</b></p></div>`));
+  sel(box,api,[
+    ["SMTP 250","Anfrage erfolgreich"],["SMTP 354","Server erwartet jetzt den Nachrichtentext"],["SMTP 550","Fehler: Empfänger/Domain nicht vorhanden"],["HTTP 404","Fehler: Seite nicht gefunden"],
+    ["Port 25","SMTP (Mail versenden)"],["Port 80","HTTP"],["Port 443","HTTPS"],["Port 110","POP3 (Mail abholen)"]
+  ],"Alles richtig. Statuscodes: 2xx Erfolg, 3xx weiter/Umleitung, 4xx/5xx Fehler. Ein Server ist ein <i>Programm</i>, das an einem festen Port auf Anfragen wartet. Auf einem Rechner können mehrere Server laufen, die Ports unterscheiden sie. IP-Adresse + Port ergeben zusammen den Socket.");
+});
+
+T(3,"Vor der Anfrage",3,(box,api)=>{
+  box.append($(`<div><p>Nach der Mail will die Schulleitung den Vertretungsplan unter <span class="mono">www.schule.de</span> aufrufen. Bevor ihr Browser die HTTP-Anfrage <span class="mono">GET /vertretungsplan.html</span> senden kann, muss er etwas wissen. <b>Was passiert zuerst?</b></p></div>`));
+  mc(box,api,[
+    "Der Browser fragt einen DNS-Server nach der IP-Adresse von www.schule.de.",
+    "Der Browser fragt den Switch nach der IP-Adresse von www.schule.de.",
+    "Der Webserver schickt dem Browser von sich aus seine IP-Adresse.",
+    "Der Browser sendet die Anfrage an alle Rechner im Internet."],0,
+   "Richtig: DNS (Domain Name System) ist ein Dienst der Anwendungsschicht, der Namen in IP-Adressen übersetzt, ähnlich wie ein Telefonbuch. Erst mit der IP-Adresse (und Port 80 bzw. 443) kann der Client eine Verbindung zum Webserver aufbauen.",
+   "Ein Switch kennt nur MAC-Adressen im lokalen Netz. Gesucht ist ein Dienst, der Namen übersetzt.");
+});
+
+/* ---------- Station 4 ---------- */
+T(4,"Kapselung",4,(box,api)=>{
+  box.append($(`<div><p>Der Browser von Rechner L1 schickt eine HTTP-Anfrage an den Schulserver. Beim Senden packt jede Schicht die Daten der Schicht darüber ein und fügt einen eigenen Header hinzu. <b>Klickt die Schritte in der richtigen Reihenfolge an.</b></p></div>`));
+  const steps = [
+    {k:"tcp", t:"TCP-Header hinzufügen (Ports)", unit:"Segment", layer:"Schicht 4: Transport"},
+    {k:"ip", t:"IP-Header hinzufügen (IP-Adressen)", unit:"Paket", layer:"Schicht 3: Vermittlung"},
+    {k:"eth", t:"Ethernet-Header und -Trailer hinzufügen (MAC-Adressen, Prüfsumme)", unit:"Rahmen (Frame)", layer:"Schicht 2: Sicherung"},
+    {k:"bit", t:"Als Signale über das Kabel senden", unit:"Bits", layer:"Schicht 1: Bitübertragung"}];
+  const pool=$(`<div class="pool"></div>`); box.append(pool);
+  const vis=$(`<div class="card" style="background:#fafaf7;margin-top:12px"></div>`); box.append(vis);
+  let pos=0;
+  function draw(){
+    const d = (bg,txt)=>`<div style="background:${bg}">${txt}</div>`;
+    let inner = d("#fff3cd","HTTP-Anfrage <span class='small'>&nbsp;(Daten, Schicht 7)</span>");
+    let h = "";
+    if(pos>=1) inner = d("#d4ecee","TCP-H")+inner;
+    if(pos>=2) inner = d("#b9dde1","IP-H")+inner;
+    if(pos>=3) inner = d("#9ccdd2","Eth-H")+inner+d("#9ccdd2","Eth-T");
+    h = `<div class="pkt">${inner}</div>`;
+    if(pos>=4) h += `<div class="mono" style="color:#1f6f78;word-break:break-all">0110100001110100011101000111000000100000…</div>`;
+    const last = pos? steps[pos-1] : null;
+    vis.innerHTML = h + `<div class="small">${last ? "Jetzt: <b>"+last.unit+"</b> ("+last.layer+")" : "Start: Daten der Anwendungsschicht"}</div>`;
+  }
+  draw();
+  shuffle(steps).forEach(s=>{ const c=$(`<button class="chip">${s.t}</button>`);
+    c.onclick=()=>{ if(api.done||c.classList.contains("used")) return;
+      if(steps[pos].k===s.k){ c.classList.add("used"); pos++; draw();
+        if(pos===4) api.solve("Richtig: Daten → Segment (TCP, Ports) → Paket (IP-Adressen) → Rahmen (MAC-Adressen) → Bits. Der Empfänger packt in umgekehrter Reihenfolge wieder aus. Die Schichten 6 und 5 (Darstellung, Sitzung) haben wir hier zusammengefasst, im TCP/IP-Modell gehören sie zur Anwendungsschicht.");
+      } else { shakeEl(c); api.wrong("Beim Senden geht es von oben nach unten durch die Schichten: erst die Transportschicht, ganz zum Schluss die Bitübertragung.", true); } };
+    pool.append(c); });
+});
+
+T(4,"Alles an seinen Platz",5,(box,api)=>{
+  const items = [["Switch",2],["Router",3],["IP-Adresse 10.0.0.5",3],["MAC-Adresse 3C:52:82:1A:4F:09",2],["Port 443",4],["TCP",4],["UDP",4],["HTTP",7],["SMTP",7],["UTF-8",6],["Glasfaserkabel",1],["WLAN-Funk",1]];
+  const names = {7:"Anwendung",6:"Darstellung",5:"Sitzung",4:"Transport",3:"Vermittlung",2:"Sicherung",1:"Bitübertragung"};
+  box.append($(`<div><p><b>Ordnet jeden Begriff der passenden OSI-Schicht zu:</b> erst einen Begriff anklicken, dann die Schicht. Ein falsch einsortierter Begriff lässt sich durch Anklicken zurückholen.</p></div>`));
+  const pool=$(`<div class="pool" style="min-height:40px"></div>`); box.append(pool);
+  const layers=$(`<div style="margin-top:10px"></div>`); box.append(layers);
+  let selected=null; const place={};
+  const rows={};
+  for(let n=7;n>=1;n--){ const r=$(`<div class="layer" data-n="${n}"><span class="ln">${n} ${names[n]}</span></div>`);
+    r.onclick=(e)=>{ if(api.done||!selected||e.target.classList.contains("chip")) return; place[selected.dataset.i]=n; r.append(selected); selected.classList.remove("sel","bad"); selected=null; };
+    rows[n]=r; layers.append(r); }
+  shuffle(items.map((x,i)=>i)).forEach(i=>{ const c=$(`<button class="chip" data-i="${i}">${esc(items[i][0])}</button>`);
+    c.onclick=(e)=>{ if(api.done) return; e.stopPropagation();
+      if(c.parentElement!==pool){ delete place[i]; pool.append(c); c.classList.remove("bad"); }
+      if(selected) selected.classList.remove("sel"); selected = (selected===c)?null:c; if(selected) c.classList.add("sel"); };
+    pool.append(c); });
+  const b=$(`<div class="row" style="margin-top:8px"><button class="btn">Prüfen</button></div>`); box.append(b);
+  b.querySelector("button").onclick=()=>{
+    if(Object.keys(place).length<items.length) return api.note(`<div class="fb hint">Ordnet zuerst alle ${items.length} Begriffe zu.</div>`);
+    let wrong=0; for(const i in place){ if(place[i]!==items[i][1]){ wrong++; const c=layers.querySelector(`.chip[data-i="${i}"]`); c.classList.add("bad"); } }
+    if(!wrong) api.solve("Alles richtig! Merksatz von 7 nach 1: <i>Alle deutschen Studenten trinken verschiedene Sorten Bier.</i> Switch und MAC-Adresse gehören zur Sicherungsschicht (lokales Netz), Router und IP-Adresse zur Vermittlungsschicht (Wegewahl über Netze), Ports, TCP und UDP zur Transportschicht.");
+    else api.wrong(`${wrong} Begriff${wrong>1?"e sind":" ist"} noch falsch einsortiert (rot markiert). Klickt sie an und sortiert sie neu.`);
+  };
+});
+
+T(4,"Router und Schichten",3,(box,api)=>{
+  box.append($(`<div><p>Das Paket von L1 läuft über den Router. <b>Warum packt ein Router ein ankommendes Paket nur bis Schicht 3 aus, während der Webserver alle Schichten durchläuft?</b></p></div>`));
+  mc(box,api,[
+    "Der Router ist zu langsam, um alle Schichten auszupacken.",
+    "Der Router braucht für die Wegewahl nur die Ziel-IP-Adresse aus dem IP-Header. Ports und Anwendungsdaten sind erst für das Zielprogramm wichtig.",
+    "Die Schichten 4 bis 7 sind verschlüsselt, deshalb kann der Router sie nicht lesen.",
+    "Der Router arbeitet nur mit MAC-Adressen und braucht deshalb Schicht 3 gar nicht."],1,
+   "Richtig: Der Router arbeitet auf der Vermittlungsschicht. Er wertet die IP-Adresse aus, wählt den nächsten Weg und packt das Paket für den nächsten Abschnitt neu in einen Rahmen. Erst der Server gibt die Daten über den Port an das richtige Programm (z. B. den Webserver) weiter.",
+   "Überlegt, welche Information ein Router für seine Aufgabe, die Wegewahl, wirklich braucht.");
+});
+
+T(4,"OSI und TCP/IP",3,(box,api)=>{
+  box.append($(`<div><p>Eine Schülerin wechselt mit ihrem Laptop vom LAN-Kabel ins WLAN. Der Browser muss dafür nicht verändert werden. <b>Welche Aussage erklärt das richtig?</b></p></div>`));
+  mc(box,api,[
+    "Der Browser erkennt das WLAN automatisch und passt sein HTTP an.",
+    "Nur die unteren Schichten (Bitübertragung und Sicherung, im TCP/IP-Modell die Netzzugangsschicht) werden ausgetauscht. Die Schichten darüber bleiben gleich, weil sie nur die Dienste der Schicht darunter nutzen.",
+    "WLAN und LAN verwenden dieselben Kabel, deshalb ändert sich nichts.",
+    "Im WLAN wird die Transportschicht übersprungen."],1,
+   "Richtig: Das ist der zentrale Vorteil von Schichtenmodellen: Austauschbarkeit. Weitere Vorteile sind Standardisierung (Geräte verschiedener Hersteller arbeiten zusammen) und Übersichtlichkeit. Im TCP/IP-Modell entsprechen Netzzugang = OSI 1+2, Internet = 3, Transport = 4, Anwendung = 5–7.",
+   "Ethernet und WLAN gehören beide zu denselben unteren Schichten.");
+});
+
+/* ================= Bausteine ================= */
+function mc(box,api,opts,correct,okText,hint,extra){
+  const w=$(`<div></div>`); box.append(w);
+  shuffle(opts.map((o,i)=>i)).forEach(i=>{ const o=opts[i]; const b=$(`<button class="opt">${o}</button>`);
+    b.onclick=()=>{ if(api.done) return;
+      if(i===correct){ b.classList.add("good"); api.solve(okText, extra && extra()); }
+      else { b.classList.add("bad"); b.disabled=true; api.wrong(hint); } };
+    w.append(b); });
+}
+function multi(box,api,opts,correct,okText,hint){
+  const chosen=new Set(); const w=$(`<div></div>`); box.append(w);
+  shuffle(opts.map((o,i)=>i)).forEach(i=>{ const o=opts[i]; const b=$(`<button class="opt mono">☐ ${esc(o)}</button>`);
+    b.onclick=()=>{ if(api.done) return; chosen.has(i)?chosen.delete(i):chosen.add(i); b.classList.toggle("sel"); b.textContent=(chosen.has(i)?"☑ ":"☐ ")+o; };
+    w.append(b); });
+  const b=$(`<div class="row" style="margin-top:6px"><button class="btn">Prüfen</button></div>`); box.append(b);
+  b.querySelector("button").onclick=()=>{ const ok = chosen.size===correct.length && correct.every(i=>chosen.has(i));
+    ok ? api.solve(okText) : api.wrong(hint); };
+}
+function numIn(box,api,ans,okText,hintFn){
+  const f=$(`<form class="row"><input type="number" style="width:140px" aria-label="Antwort"><button class="btn">Prüfen</button></form>`); box.append(f);
+  f.onsubmit=(e)=>{ e.preventDefault(); if(api.done) return; const v=parseInt(f.querySelector("input").value,10);
+    if(isNaN(v)) return; v===ans ? api.solve(okText) : api.wrong(hintFn(v)); };
+}
+function sel(box,api,pairs,okText,wide){
+  const answers = shuffle([...new Set(pairs.map(p=>p[1]))]);
+  const tab=$(`<table class="proto" style="max-width:${wide?760:640}px"></table>`);
+  const sels=[];
+  pairs.forEach(([l,r])=>{ const tr=document.createElement("tr");
+    tr.innerHTML=`<td class="${wide?'':'mono'}" style="width:${wide?'55%':'130px'};vertical-align:middle">${esc(l)}</td><td></td>`;
+    const s=document.createElement("select"); s.style.width="100%"; s.innerHTML=`<option value="">– bitte wählen –</option>`+answers.map(a=>`<option>${esc(a)}</option>`).join("");
+    s.setAttribute("aria-label",l); tr.children[1].append(s); sels.push([s,r]); tab.append(tr); });
+  box.append(tab);
+  const b=$(`<div class="row" style="margin-top:10px"><button class="btn">Prüfen</button></div>`); box.append(b);
+  b.querySelector("button").onclick=()=>{ if(api.done) return;
+    let wrong=0; sels.forEach(([s,r])=>{ const ok=s.value===r; s.style.borderColor= ok?"#2e7d4f":"#b3402f"; s.style.background= ok?"#e5f3ea":"#f9e6e2"; if(!ok) wrong++; });
+    wrong ? api.wrong(`${wrong} Zuordnung${wrong>1?"en sind":" ist"} noch falsch (rot markiert).`) : api.solve(okText); };
+}
+
+/* ================= Ablauf ================= */
+function total(){ return TASKS.reduce((a,t)=>a+t.max,0); }
+function score(){ return Object.values(S.pts).reduce((a,b)=>a+b,0); }
+function header(){
+  document.getElementById("hTeam").textContent = S.team ? "Team: "+S.team : "Notfall-Team";
+  document.getElementById("hScore").textContent = score()+" / "+total()+" Punkte";
+  document.getElementById("hProg").style.width = Math.round(100*S.idx/TASKS.length)+"%";
+}
+function lettersHTML(){
+  return STATIONS.map(s=>{ const got = TASKS.filter(t=>t.station===s.n).every(t=>t.id in S.pts);
+    return `<span class="letter ${got?'got':''}">${got?s.letter:"?"}</span>`; }).join("");
+}
+
+function teacherCheck(){
+  app.append($(`<div class="card"><h2>Prüfcode kontrollieren</h2><p class="small">Für die Lehrkraft: Teamname, Punkte und Minuten von der Urkunde eingeben.</p>
+    <form class="row" id="cf"><input type="text" id="ct" placeholder="Teamname" style="flex:2;min-width:160px"><input type="number" id="cp" placeholder="Punkte" style="width:110px"><input type="number" id="cm" placeholder="Minuten" style="width:110px"><input type="text" id="cc" placeholder="Prüfcode" style="width:120px" class="mono"><button class="btn">Prüfen</button></form><div id="cr"></div></div>`));
+  app.querySelector("#cf").onsubmit=(e)=>{ e.preventDefault(); const g=id=>app.querySelector(id).value.trim();
+    const ok = code(g("#ct"),parseInt(g("#cp"),10),parseInt(g("#cm"),10))===g("#cc").toUpperCase();
+    app.querySelector("#cr").innerHTML = ok?`<div class="fb ok">Code passt zu diesen Angaben.</div>`:`<div class="fb err">Code passt nicht. Angaben auf der Urkunde verändert oder vertippt.</div>`; };
+}
+function render(){
+  header(); app.innerHTML=""; window.scrollTo(0,0);
+  if(location.hash==="#pruefen") return teacherCheck();
+  if(!S.start) return startScreen();
+  if(S.finished) return certificate();
+  if(S.idx>=TASKS.length) return finale();
+  const t = TASKS[S.idx];
+  const firstOfStation = S.idx===0 || TASKS[S.idx-1].station!==t.station;
+  if(firstOfStation && !S["intro"+t.station]) return stationIntro(t.station);
+  taskScreen(t);
+}
+
+function startScreen(){
+  app.append($(`<div>
+    <div class="card story"><h2>Störfall im Schulnetz</h2>
+    <p>Montag, 7:40 Uhr: In den Computerräumen geht nichts mehr, der Schulserver ist nicht erreichbar, und die Netzwerk-Administratorin ist krank. Ihr seid das <b>Notfall-Team</b>.</p>
+    <p>An vier Stationen löst ihr Aufgaben zu Topologien, Protokollen, Client-Server und dem OSI-Modell. Jede gelöste Station bringt einen Buchstaben für das Lösungswort, mit dem ihr das Netz am Ende wieder freigebt.</p>
+    <p class="small">Dauer: ca. 30 Minuten. Wer am Ende die meisten Punkte hat, gewinnt; bei Gleichstand entscheidet die kürzere Zeit. Für jede Aufgabe gibt es Punkte, falsche Versuche kosten einen Punkt (mindestens 1 Punkt pro gelöster Aufgabe). Nach falschen Antworten gibt es Tipps.</p></div>
+    <div class="stations">${STATIONS.map(s=>`<div class="st"><div class="n">${s.n}</div><b>${s.name}</b><div class="small">${s.topic}</div></div>`).join("")}</div>
+    <div class="card" style="margin-top:16px"><form class="row" id="f"><label for="team"><b>Euer Teamname:</b></label><input type="text" id="team" maxlength="30" required placeholder="z. B. Lea & Tim" style="flex:1;min-width:180px"><button class="btn">Los geht’s</button></form></div>
+  </div>`));
+  app.querySelector("#f").onsubmit=(e)=>{ e.preventDefault(); S.team=app.querySelector("#team").value.trim(); if(!S.team) return; S.start=Date.now(); S.run=runCount(true); save(); render(); };
+}
+
+function stationIntro(n){
+  const s=STATIONS[n-1];
+  app.append($(`<div>
+    <div class="stations" style="margin-bottom:16px">${STATIONS.map(x=>{ const done=x.n<n; return `<div class="st ${done?'done':x.n===n?'now':'locked'}"><div class="n">${done?"✓":x.n}</div><b>${x.name}</b><div class="small">${x.topic}</div></div>`; }).join("")}</div>
+    <div class="card story"><span class="tag">Station ${n} von 4</span><h2>${s.name}</h2><p>${s.story}</p><button class="btn" id="go">Station starten</button></div>
+    <div class="card"><b>Lösungswort bisher:</b><br>${lettersHTML()}</div></div>`));
+  app.querySelector("#go").onclick=()=>{ S["intro"+n]=true; save(); render(); };
+}
+
+function taskScreen(t){
+  const s = STATIONS[t.station-1];
+  const nInSt = TASKS.filter(x=>x.station===t.station); const k = nInSt.indexOf(t)+1;
+  const card = $(`<div class="card"><div class="taskhead"><span class="tag">Station ${t.station}: ${s.name} · Aufgabe ${k}/${nInSt.length}</span><span class="small">bis zu ${t.max} Punkte</span></div><h2>${t.title}</h2><div class="body"></div><div class="fbx"></div></div>`);
+  app.append(card);
+  const body = card.querySelector(".body"), fbx = card.querySelector(".fbx");
+  let wrongs = 0; let lastClickPenalty = 0;
+  const api = {
+    done:false,
+    wrong(msg, soft){ // soft: Klick-Aufgaben, nur jeder zweite Fehler kostet einen Punkt
+      if(soft){ lastClickPenalty++; if(lastClickPenalty%2===1) wrongs++; } else wrongs++;
+      fbx.innerHTML = `<div class="fb err"><b>Noch nicht.</b> ${msg}</div>`; },
+    penalty(){ wrongs++; },
+    note(h){ fbx.innerHTML = h; },
+    solve(msg, extraEl){
+      if(api.done) return; api.done=true;
+      const pts = Math.max(1, t.max - wrongs); S.pts[t.id]=pts; save(); header();
+      fbx.innerHTML = `<div class="fb ok"><b>Gelöst! +${pts} Punkt${pts>1?"e":""}</b><br>${msg}</div>`;
+      if(extraEl) fbx.append(extraEl);
+      const lastOfStation = S.idx===TASKS.length-1 || TASKS[S.idx+1].station!==t.station;
+      const nb = $(`<div class="row" style="margin-top:12px"><button class="btn">${lastOfStation?"Station abschließen":"Weiter"}</button></div>`);
+      nb.querySelector("button").onclick=()=>{ S.idx++; save(); lastOfStation ? stationDone(t.station) : render(); };
+      fbx.append(nb); nb.querySelector("button").focus({preventScroll:true});
+    }
+  };
+  t.render(body, api);
+}
+
+function stationDone(n){
+  header(); app.innerHTML=""; window.scrollTo(0,0);
+  const s=STATIONS[n-1]; const p = TASKS.filter(t=>t.station===n).reduce((a,t)=>a+(S.pts[t.id]||0),0);
+  const m = TASKS.filter(t=>t.station===n).reduce((a,t)=>a+t.max,0);
+  app.append($(`<div class="card story" style="text-align:center"><span class="tag">Station ${n} geschafft</span><h2>${s.name}: erledigt!</h2>
+    <p>${p} von ${m} Punkten. Ihr erhaltet den Buchstaben</p><div><span class="letter got" style="width:70px;height:80px;font-size:48px">${s.letter}</span></div>
+    <p style="margin-top:14px"><b>Lösungswort bisher:</b><br>${lettersHTML()}</p>
+    <button class="btn" id="go">${n<4?"Weiter zu Station "+(n+1):"Zum Abschluss"}</button></div>`));
+  app.querySelector("#go").onclick=render;
+}
+
+function finale(){
+  app.append($(`<div class="card story"><span class="tag">Abschluss</span><h2>Ist der Server wieder erreichbar?</h2>
+    <p>Die Leitungen sind wieder verbunden. Mit einem kleinen Programm prüft man, ob ein Rechner im Netz antwortet. Sein Name ist euer Lösungswort.</p>
+    <p>${lettersHTML()}</p>
+    <div class="terminal" id="term" style="height:220px"></div>
+    <form class="termin" id="tf"><input type="text" id="ti" class="mono" autocomplete="off" spellcheck="false" placeholder="Befehl + Rechnername, z. B. … schulserver" aria-label="Befehl"><button class="btn">Ausführen</button></form>
+    <div id="fbx"></div></div>`));
+  const term=app.querySelector("#term"), ti=app.querySelector("#ti");
+  const out=(c,t)=>{ const d=document.createElement("div"); d.className=c; d.textContent=t; term.append(d); term.scrollTop=term.scrollHeight; };
+  out("sys","notfall@pc-notfall:~$"); ti.focus();
+  app.querySelector("#tf").onsubmit=(e)=>{ e.preventDefault(); const v=ti.value.trim(); ti.value=""; if(!v) return; out("c","$ "+v);
+    const p=v.toLowerCase().split(/\s+/);
+    if(p[0]!=="ping"){ out("s-err","Befehl nicht gefunden. Tipp: Das Lösungswort ist der Befehl."); return; }
+    const host=p[1]||"schulserver"; ti.disabled=true;
+    out("s-ok",`PING ${host} (10.0.0.5): 56 Datenbytes`);
+    let i=0; const iv=setInterval(()=>{ i++; out("s-ok",`64 Bytes von 10.0.0.5: icmp_seq=${i} ttl=64 Zeit=${(2+Math.random()*3).toFixed(1)} ms`);
+      if(i===4){ clearInterval(iv); out("s-ok","4 Pakete gesendet, 4 empfangen, 0 % Verlust");
+        const b=$(`<div class="fb ok"><b>Der Schulserver antwortet. Das Netz läuft wieder!</b> <span class="small">(ping arbeitet übrigens mit dem Protokoll ICMP auf Schicht 3.)</span><div class="row" style="margin-top:10px"><button class="btn">Urkunde anzeigen</button></div></div>`);
+        b.querySelector("button").onclick=()=>{ S.finished=true; S.end=Date.now(); save(); render(); };
+        app.querySelector("#fbx").append(b); } },550);
+  };
+}
+
+function certificate(){
+  const min = Math.max(1, Math.round(((S.end||Date.now())-S.start)/60000));
+  const sc=score(), tot=total(); const pct=sc/tot;
+  const rank = pct>=0.9 ? "Netzwerk-Profis" : pct>=0.7 ? "Erfahrene Admins" : pct>=0.5 ? "Solides Notfall-Team" : "Auszubildende Admins";
+  app.append($(`<div class="card cert"><span class="tag">Einsatzbericht</span><h2>Netz wieder in Betrieb</h2>
+    <p>Team <b>${esc(S.team)}</b></p><div class="big">${STATIONS.map(s=>s.letter).join("")}</div>
+    <p style="font-size:22px"><b>${sc} / ${tot} Punkte</b> · ${min} min</p><p>Rang: <b>${rank}</b></p>
+    <p class="small">Prüfcode: <b class="mono" style="font-size:18px;color:#2f3437">${code(S.team,sc,min)}</b>${(S.run||1)>1?` · Durchgang ${S.run} auf diesem Gerät`:""}</p>
+    <table class="proto" style="max-width:520px;margin:10px auto">${STATIONS.map(s=>{ const ts=TASKS.filter(t=>t.station===s.n);
+      return `<tr><td>${s.n} ${s.name}</td><td style="text-align:right">${ts.reduce((a,t)=>a+(S.pts[t.id]||0),0)} / ${ts.reduce((a,t)=>a+t.max,0)}</td></tr>`; }).join("")}</table>
+    <p class="small">Zeigt diesen Bildschirm eurer Lehrkraft.</p>
+    <details style="margin-top:14px;text-align:left"><summary>Das Wichtigste zum Mitnehmen</summary><ul>
+      <li><b>Topologien:</b> Bus, Ring, Stern, vermascht, Baum. Beim Beurteilen von Ausfällen immer den Weg verfolgen. Zentraler Switch = Single Point of Failure. Vollvermascht: n(n−1)/2 Leitungen.</li>
+      <li><b>Protokoll:</b> Format, Reihenfolge und Bedeutung der Nachrichten. Beim Dialog angeben jede Zeile mit C: oder S:, Begrüßung des Servers nicht vergessen, nach -ERR ändert sich nichts.</li>
+      <li><b>Client-Server:</b> Server = Programm, das an einem Port wartet. Statuscodes: 2xx Erfolg, 3xx weiter, 4xx/5xx Fehler.</li>
+      <li><b>OSI:</b> 7 Schichten, Kapselung von oben nach unten, Auspacken von unten nach oben. Switch: Schicht 2, Router: Schicht 3, Ports/TCP: Schicht 4.</li></ul></details>
+    <div class="row" style="justify-content:center;margin-top:14px"><button class="btn sec" id="again">Neues Spiel</button></div></div>`));
+  app.querySelector("#again").onclick=()=>{ S=fresh(); save(); render(); };
+}
+window.addEventListener("hashchange",render);
+
+render();
+</script>
+</body>
+</html>
